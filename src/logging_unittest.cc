@@ -1584,5 +1584,28 @@ TEST(Logging, FatalThrow) {
                              { throw std::logic_error{"fail"}; });
   auto restore_fail = [fail_func] { InstallFailureFunction(fail_func); };
   ScopedExit<decltype(restore_fail)> restore{restore_fail};
+  CaptureTestStderr();
+
   EXPECT_THROW({ LOG(FATAL) << "must throw to fail"; }, std::logic_error);
+
+  // Output must consist of two lines
+  std::istringstream iss{GetCapturedTestStderr()};
+  std::string line1;
+  std::string line2;
+
+  EXPECT_TRUE(std::getline(iss, line1));
+  EXPECT_TRUE(std::getline(iss, line2));
+
+  EXPECT_EQ(
+      MungeLine(line1),
+      "FYEARDATE TIME__ THREADID logging_unittest.cc:LINE] must throw to fail");
+  EXPECT_EQ(line2, "*** Check failure stack trace: ***");
+
+  std::string empty_line;
+  std::getline(iss, empty_line);
+
+  EXPECT_TRUE(empty_line.empty());
+
+  EXPECT_TRUE(iss.eof());
+  EXPECT_FALSE(iss.bad());
 }
